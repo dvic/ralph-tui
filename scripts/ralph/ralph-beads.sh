@@ -1,6 +1,6 @@
 #!/bin/bash
 # Ralph Wiggum - Long-running AI agent loop using Beads + bv/bd
-# Usage: ./ralph-beads.sh [--epic EPIC_ID] [--cli opencode|claude] [--model MODEL] [max_iterations]
+# Usage: ./ralph-beads.sh [--epic EPIC_ID] [--branch BRANCH] [--cli opencode|claude] [--model MODEL] [max_iterations]
 #        max_iterations must be a number if provided as positional arg (default: 10)
 #
 # Uses bv for smart task selection when available.
@@ -21,12 +21,17 @@ ARCHIVE_DIR="scripts/ralph/archive"
 
 # Parse flags
 EPIC_ID=""
+BRANCH=""  # Branch to work on (derived from epic if not specified)
 AGENT_CLI="opencode"
 MODEL=""  # Model for agent (e.g., opus-4.5)
 while [[ $# -gt 0 ]]; do
     case $1 in
         --epic)
             EPIC_ID="$2"
+            shift 2
+            ;;
+        --branch)
+            BRANCH="$2"
             shift 2
             ;;
         --cli)
@@ -263,8 +268,28 @@ else
     EPIC_TITLE=$(echo "$EPIC" | head -1 | cut -d: -f2- | sed 's/^ *//')
 fi
 
+# Determine the branch to work on
+CURRENT_BRANCH=$(git branch --show-current)
+if [ -z "$BRANCH" ]; then
+    # Default to current branch if --branch not specified
+    BRANCH="$CURRENT_BRANCH"
+else
+    # Switch to specified branch if not already on it
+    if [ "$CURRENT_BRANCH" != "$BRANCH" ]; then
+        echo "Switching to branch: $BRANCH"
+        if git show-ref --verify --quiet "refs/heads/$BRANCH"; then
+            git checkout "$BRANCH"
+        else
+            echo "Creating branch $BRANCH from main..."
+            git checkout -b "$BRANCH" main
+        fi
+        echo ""
+    fi
+fi
+
 echo "Working on epic: $EPIC_ID"
 echo "Title: $EPIC_TITLE"
+echo "Branch: $BRANCH"
 echo ""
 echo "Agent CLI: $AGENT_CLI"
 echo "Mode: $([ "$BV_AVAILABLE" = true ] && echo "bv + bd (smart)" || echo "bd-only (fallback)")"
