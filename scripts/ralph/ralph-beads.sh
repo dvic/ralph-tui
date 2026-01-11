@@ -358,11 +358,13 @@ EOF
     if bd show "$BEAD_ID" 2>/dev/null | grep -q "CLOSED"; then
         echo ""
         echo "✓ Bead $BEAD_ID closed"
+        # Flush database to JSONL so bv sees the change
+        bd sync --flush-only 2>/dev/null || true
     else
         echo ""
         echo "Note: Bead $BEAD_ID still open (agent may need more time)"
     fi
-    
+
     echo "Iteration $i complete. Continuing..."
     sleep 2
 done
