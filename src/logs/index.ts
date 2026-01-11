@@ -1,6 +1,7 @@
 /**
  * ABOUTME: Iteration logs module exports.
- * Provides persistence and management for iteration output logs.
+ * Provides persistence and management for iteration output logs,
+ * plus structured logging for headless/CI mode.
  */
 
 export type {
@@ -29,3 +30,14 @@ export {
   hasIterationLogs,
   getIterationLogsDiskUsage,
 } from './persistence.js';
+
+export type {
+  LogLevel,
+  LogComponent,
+  StructuredLoggerConfig,
+} from './structured-logger.js';
+
+export {
+  StructuredLogger,
+  createStructuredLogger,
+} from './structured-logger.js';

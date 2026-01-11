@@ -42,6 +42,7 @@ import type { RalphConfig } from '../config/types.js';
 import { projectConfigExists, runSetupWizard } from '../setup/index.js';
 import { createInterruptHandler } from '../interruption/index.js';
 import type { InterruptHandler } from '../interruption/types.js';
+import { createStructuredLogger } from '../logs/index.js';
 
 /**
  * Extended runtime options with noSetup flag
@@ -132,6 +133,7 @@ export function parseRunArgs(args: string[]): ExtendedRuntimeOptions {
         break;
 
       case '--headless':
+      case '--no-tui':
         options.headless = true;
         break;
 
@@ -164,8 +166,21 @@ Options:
   --cwd <path>        Working directory
   --resume            Resume existing session
   --force             Force start even if locked
-  --headless          Run without TUI
+  --headless          Run without TUI (alias: --no-tui)
+  --no-tui            Run without TUI, output structured logs to stdout
   --no-setup          Skip interactive setup even if no config exists
+
+Log Output Format (--no-tui mode):
+  [timestamp] [level] [component] message
+
+  Levels: INFO, WARN, ERROR, DEBUG
+  Components: progress, agent, engine, tracker, session, system
+
+  Example output:
+    [10:42:15] [INFO] [engine] Ralph started. Total tasks: 5
+    [10:42:15] [INFO] [progress] Iteration 1/10: Working on US-001 - Add login
+    [10:42:15] [INFO] [agent] Building prompt for task...
+    [10:42:30] [INFO] [progress] Iteration 1 finished. Task US-001: COMPLETED. Duration: 15s
 
 Examples:
   ralph-tui run                              # Start with defaults
@@ -175,6 +190,7 @@ Examples:
   ralph-tui run --tracker beads-bv           # Use beads-bv tracker
   ralph-tui run --iterations 20              # Limit to 20 iterations
   ralph-tui run --resume                     # Resume previous session
+  ralph-tui run --no-tui                     # Run headless for CI/scripts
 `);
 }
 
@@ -428,79 +444,133 @@ async function runWithTui(
 }
 
 /**
- * Run in headless mode (no TUI)
+ * Run in headless mode (no TUI) with structured log output.
  * In headless mode, Ctrl+C immediately triggers graceful shutdown (no confirmation dialog).
  * Double Ctrl+C within 1 second forces immediate exit.
+ *
+ * Log output format: [timestamp] [level] [component] message
+ * This is designed for CI/scripts that need machine-parseable output.
  */
 async function runHeadless(
   engine: ExecutionEngine,
   persistedState: PersistedSessionState,
-  _config: RalphConfig
+  config: RalphConfig
 ): Promise<PersistedSessionState> {
   let currentState = persistedState;
   let lastSigintTime = 0;
   const DOUBLE_PRESS_WINDOW_MS = 1000;
 
-  // Subscribe to events for console output and state persistence
+  // Create structured logger for headless output
+  const logger = createStructuredLogger();
+
+  // Subscribe to events for structured log output and state persistence
   engine.on((event) => {
     switch (event.type) {
       case 'engine:started':
-        console.log(`\nRalph started. Total tasks: ${event.totalTasks}`);
+        logger.engineStarted(event.totalTasks);
         break;
 
       case 'iteration:started':
-        console.log(`\n--- Iteration ${event.iteration}: ${event.task.title} ---`);
+        // Progress update in required format
+        logger.progress(
+          event.iteration,
+          config.maxIterations,
+          event.task.id,
+          event.task.title
+        );
         break;
 
       case 'iteration:completed':
-        console.log(
-          `Iteration ${event.result.iteration} completed. ` +
-            `Task ${event.result.taskCompleted ? 'DONE' : 'in progress'}. ` +
-            `Duration: ${Math.round(event.result.durationMs / 1000)}s`
+        // Log iteration completion
+        logger.iterationComplete(
+          event.result.iteration,
+          event.result.task.id,
+          event.result.taskCompleted,
+          event.result.durationMs
         );
+
+        // Log task completion if applicable
+        if (event.result.taskCompleted) {
+          logger.taskCompleted(event.result.task.id, event.result.iteration);
+        }
+
         // Save state after each iteration
         currentState = updateSessionAfterIteration(currentState, event.result);
         savePersistedSession(currentState).catch(() => {
-          // Log but don't fail on save errors
+          // Silently continue on save errors
         });
         break;
 
       case 'iteration:failed':
-        console.error(`Iteration ${event.iteration} FAILED: ${event.error}`);
+        logger.iterationFailed(
+          event.iteration,
+          event.task.id,
+          event.error,
+          event.action
+        );
+        break;
+
+      case 'iteration:retrying':
+        logger.iterationRetrying(
+          event.iteration,
+          event.task.id,
+          event.retryAttempt,
+          event.maxRetries,
+          event.delayMs
+        );
+        break;
+
+      case 'iteration:skipped':
+        logger.iterationSkipped(event.iteration, event.task.id, event.reason);
+        break;
+
+      case 'agent:output':
+        // Stream agent output with [AGENT] prefix
+        if (event.stream === 'stdout') {
+          logger.agentOutput(event.data);
+        } else {
+          logger.agentError(event.data);
+        }
+        break;
+
+      case 'task:selected':
+        logger.taskSelected(event.task.id, event.task.title, event.iteration);
         break;
 
       case 'engine:paused':
-        console.log('\nPaused. Use "ralph-tui resume" to continue.');
+        logger.enginePaused(event.currentIteration);
         currentState = pauseSession(currentState);
         savePersistedSession(currentState).catch(() => {
-          // Log but don't fail on save errors
+          // Silently continue on save errors
         });
         break;
 
       case 'engine:resumed':
-        console.log('\nResumed...');
+        logger.engineResumed(event.fromIteration);
         currentState = { ...currentState, status: 'running', isPaused: false, pausedAt: undefined };
         savePersistedSession(currentState).catch(() => {
-          // Log but don't fail on save errors
+          // Silently continue on save errors
         });
         break;
 
       case 'engine:stopped':
-        console.log(`\nRalph stopped. Reason: ${event.reason}`);
-        console.log(`Total iterations: ${event.totalIterations}`);
-        console.log(`Tasks completed: ${event.tasksCompleted}`);
+        logger.engineStopped(event.reason, event.totalIterations, event.tasksCompleted);
         break;
 
       case 'all:complete':
-        console.log('\nAll tasks complete!');
+        logger.allComplete(event.totalCompleted, event.totalIterations);
+        break;
+
+      case 'task:completed':
+        // Already logged in iteration:completed handler
         break;
     }
   });
 
   // Graceful shutdown handler
   const gracefulShutdown = async (): Promise<void> => {
-    console.log('\nInterrupted, stopping gracefully...');
-    console.log('(Press Ctrl+C again within 1s to force quit)');
+    logger.info('system', 'Interrupted, stopping gracefully...');
+    logger.info('system', '(Press Ctrl+C again within 1s to force quit)');
     // Save interrupted state
     currentState = { ...currentState, status: 'interrupted' };
     await savePersistedSession(currentState);
@@ -516,7 +586,7 @@ async function runHeadless(
 
     // Check for double-press - force quit immediately
     if (timeSinceLastSigint < DOUBLE_PRESS_WINDOW_MS) {
-      console.log('\nForce quit!');
+      logger.warn('system', 'Force quit!');
       process.exit(1);
     }
 
@@ -526,7 +596,7 @@ async function runHeadless(
 
   // Handle SIGTERM (always graceful, no double-press)
   const handleSigterm = async (): Promise<void> => {
-    console.log('\nReceived SIGTERM, stopping gracefully...');
+    logger.info('system', 'Received SIGTERM, stopping gracefully...');
     currentState = { ...currentState, status: 'interrupted' };
     await savePersistedSession(currentState);
     await engine.dispose();
@@ -535,6 +605,13 @@ async function runHeadless(
 
   process.on('SIGINT', handleSigint);
   process.on('SIGTERM', handleSigterm);
+
+  // Log session start
+  logger.sessionCreated(
+    currentState.sessionId,
+    config.agent.plugin,
+    config.tracker.plugin
+  );
 
   // Start the engine
   await engine.start();
