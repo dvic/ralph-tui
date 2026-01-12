@@ -1344,4 +1344,7 @@ export async function executeRunCommand(args: string[]): Promise<void> {
   await releaseLockNew(config.cwd);
   cleanupLockHandlers();
   console.log('\nRalph TUI finished.');
+
+  // Explicitly exit - event listeners may keep process alive otherwise
+  process.exit(0);
 }
