@@ -301,7 +301,9 @@ export class ClaudeAgentPlugin extends BaseAgentPlugin {
     // Add output format for structured JSONL streaming
     // Always use stream-json when we want structured output (subagentTracing or json/stream modes)
     // Note: 'json' format waits until the end - we always prefer 'stream-json' for live output
+    // IMPORTANT: Claude CLI requires --verbose when using --print with --output-format=stream-json
     if (options?.subagentTracing || this.printMode === 'json' || this.printMode === 'stream') {
+      args.push('--verbose');
       args.push('--output-format', 'stream-json');
     }
     // Default (printMode === 'text'): no --output-format flag, uses plain text streaming
