@@ -4,7 +4,7 @@
  */
 
 import { readFile, readdir } from 'fs/promises';
-import { join } from 'path';
+import { join, resolve } from 'path';
 
 /**
  * Frontmatter metadata extracted from MDX files.
@@ -171,14 +171,15 @@ export function generateTableOfContents(content: string): TocItem[] {
  * @returns Document data including content, frontmatter, and TOC
  */
 export async function getDocBySlug(slug: string): Promise<DocData> {
-  const docsDirectory = join(process.cwd(), 'content', 'docs');
+  // Resolve to absolute path for reliable comparison
+  const docsDirectory = resolve(process.cwd(), 'content', 'docs');
 
-  // Prevent path traversal attacks by normalizing and validating the path
-  const normalizedSlug = slug.replace(/\.\./g, '').replace(/^\/+/, '');
-  const filePath = join(docsDirectory, `${normalizedSlug}.mdx`);
+  // Resolve the full file path (this normalizes .. and other path components)
+  const filePath = resolve(docsDirectory, `${slug}.mdx`);
 
-  // Ensure the resolved path is still within the docs directory
-  if (!filePath.startsWith(docsDirectory)) {
+  // Ensure the resolved path is within the docs directory
+  // Use trailing slash to prevent sibling-prefix matches (e.g., /docs-evil/file)
+  if (!filePath.startsWith(docsDirectory + '/')) {
     throw new Error('Invalid document path');
   }
 

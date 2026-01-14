@@ -95,8 +95,8 @@ export function SidebarNavItem({ item, depth = 0 }: SidebarNavItemProps) {
           }}
         >
           <div className="relative ml-3 border-l border-border-muted pl-0">
-            {item.items!.map((child) => (
-              <SidebarNavItem key={child.href || child.title} item={child} depth={depth + 1} />
+            {item.items!.map((child, index) => (
+              <SidebarNavItem key={`${child.href || child.title}-${index}`} item={child} depth={depth + 1} />
             ))}
           </div>
         </div>
@@ -167,8 +167,8 @@ export function SidebarNavItem({ item, depth = 0 }: SidebarNavItemProps) {
         {/* Nested items for link items with children */}
         {hasChildren && (
           <div className="ml-4 mt-1 border-l border-border-muted pl-0">
-            {item.items!.map((child) => (
-              <SidebarNavItem key={child.href || child.title} item={child} depth={depth + 1} />
+            {item.items!.map((child, index) => (
+              <SidebarNavItem key={`${child.href || child.title}-${index}`} item={child} depth={depth + 1} />
             ))}
           </div>
         )}
