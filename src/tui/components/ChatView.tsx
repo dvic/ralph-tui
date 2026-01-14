@@ -169,8 +169,7 @@ export function ChatView({
     onSubmit?.(currentValue);
   }, [onSubmit]);
 
-  // Handle keyboard for Enter key submission
-  // Enter = submit, Shift+Enter or Ctrl+J = insert newline
+  // Handle keyboard for text editing shortcuts (macOS-style)
   const handleKeyboard = useCallback(
     (key: KeyEvent) => {
       // Only handle if textarea is focused and input is enabled
@@ -178,9 +177,10 @@ export function ChatView({
         return;
       }
 
-      // Check for Enter key (without modifiers for submit)
+      const textarea = textareaRef.current;
+
+      // Enter = submit (without modifiers)
       if (key.name === 'return' && !key.meta && !key.ctrl && !key.shift) {
-        // Prevent default behavior (newline) and submit instead
         key.preventDefault?.();
         handleSubmit();
         return;
@@ -188,6 +188,115 @@ export function ChatView({
 
       // Check for Ctrl+J or Shift+Enter - allow default behavior (newline)
       // These don't need special handling, just let them through
+
+      // === Option + Arrow Keys (word navigation) ===
+      if (key.option && !key.shift && !key.meta && !key.ctrl) {
+        if (key.name === 'left') {
+          key.preventDefault?.();
+          textarea.moveWordBackward();
+          return;
+        }
+        if (key.name === 'right') {
+          key.preventDefault?.();
+          textarea.moveWordForward();
+          return;
+        }
+        if (key.name === 'up') {
+          key.preventDefault?.();
+          textarea.gotoBufferHome();
+          return;
+        }
+        if (key.name === 'down') {
+          key.preventDefault?.();
+          textarea.gotoBufferEnd();
+          return;
+        }
+      }
+
+      // === Option + Delete (delete word) ===
+      if (key.option && key.name === 'backspace') {
+        key.preventDefault?.();
+        textarea.deleteWordBackward();
+        return;
+      }
+      // Option + Fn + Delete (Forward Delete on some keyboards)
+      if (key.option && key.name === 'delete') {
+        key.preventDefault?.();
+        textarea.deleteWordForward();
+        return;
+      }
+
+      // === Shift + Option + Arrow Keys (select by word/paragraph) ===
+      if (key.shift && key.option && !key.meta && !key.ctrl) {
+        if (key.name === 'left') {
+          key.preventDefault?.();
+          textarea.moveWordBackward({ select: true });
+          return;
+        }
+        if (key.name === 'right') {
+          key.preventDefault?.();
+          textarea.moveWordForward({ select: true });
+          return;
+        }
+        if (key.name === 'up') {
+          key.preventDefault?.();
+          textarea.gotoBufferHome({ select: true });
+          return;
+        }
+        if (key.name === 'down') {
+          key.preventDefault?.();
+          textarea.gotoBufferEnd({ select: true });
+          return;
+        }
+      }
+
+      // === Shift + Arrow Keys (select by character/line) ===
+      if (key.shift && !key.meta && !key.option && !key.ctrl) {
+        if (key.name === 'left') {
+          key.preventDefault?.();
+          textarea.moveCursorLeft({ select: true });
+          return;
+        }
+        if (key.name === 'right') {
+          key.preventDefault?.();
+          textarea.moveCursorRight({ select: true });
+          return;
+        }
+        if (key.name === 'up') {
+          key.preventDefault?.();
+          textarea.moveCursorUp({ select: true });
+          return;
+        }
+        if (key.name === 'down') {
+          key.preventDefault?.();
+          textarea.moveCursorDown({ select: true });
+          return;
+        }
+      }
+
+      // === Shift + Cmd + Arrow Keys (select to line start/end) ===
+      if (key.shift && key.meta && !key.option && !key.ctrl) {
+        if (key.name === 'left') {
+          key.preventDefault?.();
+          textarea.gotoLineHome({ select: true });
+          return;
+        }
+        if (key.name === 'right') {
+          key.preventDefault?.();
+          textarea.gotoLineEnd({ select: true });
+          return;
+        }
+        if (key.name === 'up') {
+          key.preventDefault?.();
+          textarea.gotoBufferHome({ select: true });
+          return;
+        }
+        if (key.name === 'down') {
+          key.preventDefault?.();
+          textarea.gotoBufferEnd({ select: true });
+          return;
+        }
+      }
     },
     [inputEnabled, isLoading, handleSubmit]
   );
