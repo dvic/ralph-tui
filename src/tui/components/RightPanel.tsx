@@ -592,7 +592,7 @@ function TaskOutputView({
         {(agentName || modelDisplay) && (
           <box style={{ flexDirection: 'row', gap: 1 }}>
             {agentName && <text fg={colors.accent.secondary}>{agentName}</text>}
-            {agentName && modelDisplay && <span fg={colors.fg.muted}>|</span>}
+            {agentName && modelDisplay && <text fg={colors.fg.muted}>|</text>}
             {modelDisplay && (
               <text fg={colors.accent.primary}>{modelDisplay.provider}/{modelDisplay.model}</text>
             )}
