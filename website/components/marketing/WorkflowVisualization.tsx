@@ -103,7 +103,8 @@ const centerVariants: Variants = {
   },
 };
 
-const arrowVariants: Variants = {
+// Arrow variants for future animation use
+const _arrowVariants: Variants = {
   hidden: { opacity: 0, pathLength: 0 },
   visible: {
     opacity: 1,
@@ -119,7 +120,7 @@ const arrowVariants: Variants = {
 /**
  * Single workflow step card component.
  */
-function WorkflowStepCard({ step, index }: { step: WorkflowStep; index: number }) {
+function WorkflowStepCard({ step, index: _index }: { step: WorkflowStep; index: number }) {
   const Icon = step.icon;
 
   return (

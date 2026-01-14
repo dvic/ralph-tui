@@ -346,7 +346,6 @@ function Td({ children, ...props }: React.HTMLAttributes<HTMLTableCellElement>) 
  */
 function Img(props: React.ImgHTMLAttributes<HTMLImageElement>) {
   return (
-    // eslint-disable-next-line @next/next/no-img-element
     <img
       className={[
         'my-6 rounded-sm',

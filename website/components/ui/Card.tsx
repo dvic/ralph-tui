@@ -16,9 +16,9 @@ interface CardProps extends HTMLAttributes<HTMLDivElement> {
   variant?: 'default' | 'elevated' | 'bordered';
 }
 
-interface CardHeaderProps extends HTMLAttributes<HTMLDivElement> {}
-interface CardContentProps extends HTMLAttributes<HTMLDivElement> {}
-interface CardFooterProps extends HTMLAttributes<HTMLDivElement> {}
+type CardHeaderProps = HTMLAttributes<HTMLDivElement>;
+type CardContentProps = HTMLAttributes<HTMLDivElement>;
+type CardFooterProps = HTMLAttributes<HTMLDivElement>;
 
 /**
  * Base card styles - terminal window aesthetic with layered backgrounds.
