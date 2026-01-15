@@ -47,7 +47,7 @@ Basic configuration:
 agent = "droid"
 
 [agentOptions]
-model = "claude-sonnet-4-20250514"
+model = "claude-opus-4-5-20251101"
 reasoningEffort = "medium"
 skipPermissions = false
 enableTracing = true
@@ -64,7 +64,7 @@ plugin = "droid"
 default = true
 
 [agents.options]
-model = "claude-sonnet-4-20250514"
+model = "claude-opus-4-5-20251101"
 reasoningEffort = "high"
 skipPermissions = true
 enableTracing = true
@@ -81,11 +81,13 @@ enableTracing = true
 
 ## Models and Reasoning Effort
 
-Factory Droid supports passing a model name and reasoning effort level. Configure via `agentOptions`:
+Factory Droid supports passing a model name and reasoning effort level. Configure via `agentOptions` and refer to the official list of available models:
+
+- **[Factory Droid available models](https://docs.factory.ai/reference/cli-reference#available-models)**
 
 ```toml
 [agentOptions]
-model = "claude-sonnet-4-20250514"
+model = "claude-opus-4-5-20251101"
 reasoningEffort = "high"
 ```
 
@@ -125,7 +127,7 @@ Ralph TUI builds a command similar to:
 
 ```bash
 droid --print -p "<prompt>" \
-  --model claude-sonnet-4-20250514 \
+  --model claude-opus-4-5-20251101 \
   --reasoning-effort high \
   --skip-permissions-unsafe \
   --output-format stream-json \
