@@ -186,8 +186,21 @@ export function ChatView({
         return;
       }
 
-      // Check for Ctrl+J or Shift+Enter - allow default behavior (newline)
-      // These don't need special handling, just let them through
+      // Shift+Enter = insert newline
+      // Note: Many terminals send Shift+Enter as ESC+CR which is parsed as meta: true
+      // (e.g., Ghostty, iTerm2). Some may send it as shift: true.
+      if (key.name === 'return' && (key.shift || key.meta)) {
+        key.preventDefault?.();
+        textarea.editBuffer.newLine();
+        return;
+      }
+
+      // Ctrl+J = insert newline (sends \n, parsed as name: "enter")
+      if ((key.name === 'j' && key.ctrl) || (key.name === 'enter' && !key.meta && !key.shift)) {
+        key.preventDefault?.();
+        textarea.editBuffer.newLine();
+        return;
+      }
 
       // === Option + Arrow Keys (word navigation) ===
       if (key.option && !key.shift && !key.meta && !key.ctrl) {
