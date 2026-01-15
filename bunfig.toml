@@ -1,6 +1,6 @@
 [test]
-# Run tests from src directory
-root = "./src"
+# Run tests from src and tests directories
+root = "."
 
 # Coverage settings
 coverage = false
